@@ -1,18 +1,10 @@
-# Build and Release Folders
-bin-debug/
-bin-release/
-[Oo]bj/
-[Bb]in/
+# Run folders made by make_run.py
+runs/
 
-# Other files and folders
-.settings/
+# Python
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
 
-# Executables
-*.swf
-*.air
-*.ipa
-*.apk
-
-# Project files, i.e. `.project`, `.actionScriptProperties` and `.flexProperties`
-# should NOT be excluded as they contain compiler settings and other important
-# information for Eclipse / Flash Builder.
+# Local only: the full KickBench and its hidden test set are not part of this repository
+kickbench/
