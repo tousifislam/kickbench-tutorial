@@ -26,6 +26,7 @@ the recoil speed for binaries with spins aligned with the orbit.
 | [`starter_kit/`](starter_kit/) | A small, self-contained benchmark: task, training data, hidden data, grader, and a script that makes one run folder per arm. Start here. | Section 5 |
 | [`kickskills/`](kickskills/) | The two skills used in the talk: `kick-physics` (conventions, structure, limits, a worked form) and `kick-validation` (noise floor, grouped cross validation, physics self-check). | Section 4, KickSkills |
 | [`kickagent/`](kickagent/) | A validation-constrained workflow: the agent writes candidate models, a fixed tool scores each by cross validation and physics checks, and the best valid one is delivered. | Section 4, KickAgent |
+| [`kickbench/`](kickbench/) | The full benchmark behind the results in the talk: task, house rules, training data, grader code, run scripts, analysis, tables and figures. The hidden test set is not included. | Sections 3 and 4 |
 
 ## Quick start
 
@@ -65,9 +66,10 @@ requirements and how to adapt the kit to your own problem are in
 
 ## Relation to KickBench
 
-The results in the talk come from the full KickBench benchmark: 1510 training and 380 hidden
-simulations, a sandboxed 45 minute session per run, and a stricter grader. KickBench and its
-hidden test set are not in this repository, so nothing here can contaminate it. The starter kit's
+The results in the talk come from the full KickBench benchmark in [`kickbench/`](kickbench/):
+1510 training and 380 hidden simulations, a sandboxed 45 minute session per run, and a stricter
+grader. Its code, prompts, training data and results are here; its hidden test set is not, so the
+grader can be read but not run, and nothing here can contaminate the hidden set. The starter kit's
 train and hidden files are both carved out of KickBench's training set, split by binary
 (`starter_kit/tools/make_split.py`). KickSkills and KickAgent were written from the training data
 and the literature only, and were never tuned on the hidden test set.
