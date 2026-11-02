@@ -15,129 +15,62 @@ The talk makes two points:
   written as code that re-runs the agent's solution.
 
 You only learn whether a skill helps by running the same agent on the same benchmark, with and
-without the skill. This kit lets you run that experiment in about 20 minutes, with any coding
-agent, or with no agent and a free API key.
-
-The example problem is the **black hole kick**: when two black holes merge, the remnant recoils,
-and the task is to model the recoil speed for binaries with spins aligned with the orbit.
+without the skill. Everything here is built around one example from gravitational-wave physics,
+the **black hole kick**: when two black holes merge, the remnant recoils, and the task is to model
+the recoil speed for binaries with spins aligned with the orbit.
 
 ## What is here
 
-```
-workspace/                what the agent sees
-  AGENTS.md               house rules, always loaded (copied to CLAUDE.md and GEMINI.md per run)
-  TASK.md                 the task, and how it is scored
-  data/train.csv          training data: 1142 simulations
-skills/kick-physics/      the skill: SKILL.md, loaded when relevant
-grader/                   the agent never sees this folder
-  score.py                accuracy on hidden data, plus three physics limits
-  hidden.csv              hidden test data: 368 simulations
-make_run.py               makes a fresh run folder for one arm of the experiment
-ask_llm.py                no agent: one call to any OpenAI-compatible chat API
-tools/make_split.py       how the train and hidden files were made (already run)
-```
+| Folder | What it is | In the talk |
+|---|---|---|
+| [`starter_kit/`](starter_kit/) | A small, self-contained benchmark: task, training data, hidden data, grader, and a script that makes one run folder per arm. Start here. | Section 5 |
+| [`kickskills/`](kickskills/) | The two skills used in the talk: `kick-physics` (conventions, structure, limits, a worked form) and `kick-validation` (noise floor, grouped cross validation, physics self-check). | Section 4, KickSkills |
+| [`kickagent/`](kickagent/) | A validation-constrained workflow: the agent writes candidate models, a fixed tool scores each by cross validation and physics checks, and the best valid one is delivered. | Section 4, KickAgent |
 
-## Requirements
-
-Python 3 with `numpy`. Solutions written by the agent may also use `scipy`. The run and scoring
-scripts use only the standard library and numpy.
-
-You also need one of:
-
-- a coding agent: [Claude Code](https://docs.claude.com/en/docs/claude-code),
-  [Codex CLI](https://github.com/openai/codex) or
-  [Gemini CLI](https://github.com/google-gemini/gemini-cli), or
-- no agent at all: an API key for any OpenAI-compatible chat endpoint, for example a free
-  [Gemini key](https://aistudio.google.com/apikey) or a local model with
-  [Ollama](https://ollama.com).
-
-## Quick start: the experiment
-
-Make two run folders, one without the skill and one with it:
+## Quick start
 
 ```
-python make_run.py none 1         # runs/none_s1: the bare task
-python make_run.py skill 1        # runs/skill_s1: the same task, plus the skill
+cd starter_kit
+python make_run.py none 1          # the bare task
+python make_run.py skill 1         # the task plus one short skill
+python make_run.py kickskills 1    # the task plus both KickSkills
+python make_run.py agent 1         # both KickSkills plus the KickAgent loop
 ```
 
-Run the **same** agent in both folders, for example
+Run the **same** coding agent in each folder (Claude Code, Codex CLI, Gemini CLI, or any other),
+then score each one:
 
 ```
-cd runs/skill_s1 && claude -p "Read TASK.md and complete the task."    # Claude Code
-cd runs/skill_s1 && codex exec "Read TASK.md and complete the task."   # Codex CLI
-cd runs/skill_s1 && gemini -p "Read TASK.md and complete the task."    # Gemini CLI
+cd runs/agent_s1 && claude -p "Read TASK.md and complete the task."
+cd ../.. && python grader/score.py runs/agent_s1
 ```
 
-or, with no agent and no subscription:
-
-```
-export LLM_API_KEY=...            # free key: https://aistudio.google.com/apikey
-python ask_llm.py runs/skill_s1
-python ask_llm.py runs/none_s1 --base-url http://localhost:11434/v1 --model qwen2.5-coder   # Ollama
-```
-
-Each run must leave a `solve.py` that defines `kick(q, chi1, chi2)`. Then score both:
-
-```
-python grader/score.py runs/none_s1
-python grader/score.py runs/skill_s1
-```
-
-The grader prints JSON:
-
-```
-{
- "valid": true,
- "nr_median_kms": ...,          median absolute error on hidden numerical-relativity rows, km/s
- "bhpt_median_kms": ...,        the same on hidden perturbation-theory rows
- "physics": {"twins": ..., "relabel": ..., "falloff": ...},
- "physics_passed": "N of 3"
-}
-```
-
-The three physics checks are evaluated far outside the data, up to mass ratio 10^4: no kick for
-identical holes, the same speed when the two holes are relabelled at q = 1, and a speed that
-falls as q^-2 at very large q. `TASK.md` states all of them, so the agent knows what is checked but never
-sees the answers.
-
-Repeat with seeds 2 and 3 (`python make_run.py skill 2`, ...). One run per arm is an anecdote:
-agents vary from run to run.
-
-## Make it yours
-
-Replace four files and the kit works for your problem:
-
-1. **`workspace/TASK.md`:** one deliverable the grader can run (here `solve.py` with
-   `kick(q, chi1, chi2)`), and the scoring rules stated in full. The agent should know what is
-   checked, never the answers.
-2. **`workspace/data/` and `grader/hidden.csv`:** split by object, not by row, if the same object
-   appears more than once.
-3. **`grader/score.py`:** your field's metric, as code, plus checks of the limits a correct answer
-   must obey, evaluated where there is no data.
-4. **`skills/<name>/SKILL.md`:** a `description` that says when to load it, then conventions,
-   limits and the mistakes a good student would make. Nothing that only helps on the hidden data.
-
-Five questions to start with:
-
-1. What number would your community trust? That metric, as code, is your grader.
-2. Where does ground truth come from? A simulation, an injection-recovery test, a held-out
-   catalog. That is your hidden data.
-3. What number in your field looks fine and means nothing on its own? That is a pitfall for
-   your skill.
-4. What did you warn your last student about? That is your first skill.
-5. How would you cheat? Close that before you trust any score.
+No agent and no subscription? `starter_kit/ask_llm.py` sends the same files to any
+OpenAI-compatible chat API, such as a free Gemini key or a local model with Ollama. Details,
+requirements and how to adapt the kit to your own problem are in
+[`starter_kit/README.md`](starter_kit/README.md).
 
 ## Honest use
 
-- **Keep `grader/` out of the agent's reach.** This kit keeps it outside the run folder, which is
+- **Keep the grader out of the agent's reach.** The kit keeps it outside the run folder, which is
   enough for a demonstration but not a guarantee. For a real benchmark, run the agent in a
   sandbox that cannot read the grader or its data.
-- **Change one thing at a time.** Compare arms with the same agent, model and route. A single API
-  call is weaker than an agent that can run its own code.
+- **Change one thing at a time.** Compare arms with the same agent, model and route. Repeat each
+  arm with at least three seeds: agents vary from run to run.
 - **The benchmark firewall.** If a sentence in a skill would raise the score without making the
   agent that reads it more competent in general, it does not belong in the skill.
-- **Know whose knowledge you are measuring.** If you wrote both the skill and the benchmark, a
-  gain shows that your knowledge transfers to an agent, not that anyone's would.
+- **Know whose knowledge you are measuring.** The skills, the benchmark and the published
+  reference fit were all written by the same person. A gain from these skills shows that this
+  knowledge transfers to an agent, not that an independent expert's would.
+
+## Relation to KickBench
+
+The results in the talk come from the full KickBench benchmark: 1510 training and 380 hidden
+simulations, a sandboxed 45 minute session per run, and a stricter grader. KickBench and its
+hidden test set are not in this repository, so nothing here can contaminate it. The starter kit's
+train and hidden files are both carved out of KickBench's training set, split by binary
+(`starter_kit/tools/make_split.py`). KickSkills and KickAgent were written from the training data
+and the literature only, and were never tuned on the hidden test set.
 
 ## Data
 
@@ -146,16 +79,9 @@ hole perturbation theory (BHPT) at large mass ratio, as curated in Islam, Wadeka
 arXiv:2608.00934. The convention is `q = m1/m2 >= 1`, `chi1z` belongs to the heavier hole, and
 kicks are in km/s.
 
-Both files in this kit are drawn from the training set of the full KickBench benchmark shown in
-the talk, split by binary so that no binary appears on both sides (`tools/make_split.py`).
-KickBench's own hidden test set is not included and is not reachable from this repository, so
-running or publishing results with this kit does not contaminate it. `tools/make_split.py`
-documents how the split was made; it needs the full KickBench folder and does not need to be
-run again.
-
 ## Citation
 
-If you use this kit, please cite the talk and the data source:
+If you use this repository, please cite the talk and the data source:
 
 - T. Islam, *Skills and Benchmarks*, NASA AI/ML STIG lecture, 2 November 2026.
 - T. Islam, D. Wadekar and G. Khanna, arXiv:2608.00934.
